@@ -1,7 +1,196 @@
 import java.io.File
+import kotlin.math.ceil
 
 fun main(args: Array<String>) {
-    day2part2()
+    day6part2()
+}
+
+fun day7() {
+
+}
+
+fun day6part2() {
+    val groups = File("6.txt").readText().split("\n\n")
+    val sum = groups.sumBy { group ->
+        group
+            .split("\n")
+            .map { it.toCharArray() }
+            .reduce { acc, s ->
+                acc.intersect(s.toList()).toCharArray()
+            }.size
+    }
+    println(sum)
+}
+
+
+fun day6() {
+    val groups = File("6.txt").readText().split("\n\n")
+    val sum = groups.sumBy { group ->
+        group.filter {
+            it.isLetter()
+        }.toSet().size
+    }
+    println(sum)
+}
+
+fun day5() {
+    val ids = ArrayList<Int>()
+    val lines = readFile("5.txt")
+    lines.forEach { line ->
+        val rowIdentifier = line.subSequence(0, 7)
+        val columnIdentifier = line.subSequence(7, 10)
+        var bottomRow = 0
+        var topRow = 127
+        rowIdentifier.forEach {
+            when (it) {
+                'F' -> topRow -= ceil((topRow - bottomRow) / 2.0).toInt()
+                'B' -> bottomRow += ceil((topRow - bottomRow) / 2.0).toInt()
+                else -> error("$it is not either F or B")
+            }
+        }
+        val row = bottomRow
+        var bottomColumn = 0
+        var topColumn = 7
+        columnIdentifier.forEach {
+            when (it) {
+                'L' -> topColumn -= ceil((topColumn - bottomColumn) / 2.0).toInt()
+                'R' -> bottomColumn += ceil((topColumn - bottomColumn) / 2.0).toInt()
+                else -> error("$it is not either L or R")
+            }
+        }
+        val column = bottomColumn
+        val seatId = (row * 8) + column
+        ids.add(seatId)
+    }
+    ids.sort()
+    println(ids)
+    var expected = 45
+    for (i in 0..(953 - 45)) {
+        if (ids[i] != expected && ids.contains(expected - 1) && ids.contains(expected + 1)) {
+            println("My boarding pass is $expected")
+            return
+        }
+        expected++
+    }
+}
+
+typealias Validator = (String) -> Boolean
+
+fun day4part2() {
+    val input = File("4.txt").readText().split("\n\n")
+    val requiredFields = listOf<Pair<String, Validator>>(
+        Pair("byr") {
+            if (it.length != 4) return@Pair false
+            return@Pair it.toIntOrNull()?.let { number ->
+                number in 1920..2002
+            } ?: false
+        },
+        Pair("iyr") {
+            if (it.length != 4) return@Pair false
+            return@Pair it.toIntOrNull()?.let { number ->
+                number in 2010..2020
+            } ?: false
+        },
+        Pair("eyr") {
+            if (it.length != 4) return@Pair false
+            return@Pair it.toIntOrNull()?.let { number ->
+                number in 2020..2030
+            } ?: false
+        },
+        Pair("hgt") {
+            val hgtRegex = Regex("[0-9]+(in|cm)")
+            return@Pair when {
+                !it.matches(hgtRegex) -> false
+                it.contains("cm") -> {
+                    it.split("cm").getOrNull(0)?.toIntOrNull()?.let { number ->
+                        number in 150..193
+                    } ?: false
+                }
+                it.contains("in") -> {
+                    it.split("in").getOrNull(0)?.toIntOrNull()?.let { number ->
+                        number in 59..76
+                    } ?: false
+                }
+                else -> false
+            }
+        },
+        Pair("hcl") {
+            val hexRegex = Regex("[#][a-zA-Z0-9]{6}")
+            return@Pair it.matches(hexRegex)
+        },
+        Pair("ecl") {
+            val eclRegex = Regex("(amb|blu|brn|gry|grn|hzl|oth)")
+            return@Pair it.matches(eclRegex)
+        },
+        Pair("pid") {
+            val pidRegex = Regex("[0-9]{9}")
+            return@Pair it.matches(pidRegex)
+        }
+    )
+    var validPassports = 0
+    val regex = Regex("[ \r\n]")
+    input.forEach { passport ->
+        val fields = passport.split(regex).mapNotNull {
+            val array = it.split(":")
+            if (array.size != 2) return@mapNotNull null
+            array[0] to array[1]
+        }
+        if (!fields.map { it.first }.containsAll(requiredFields.map { it.first })) return@forEach
+        val results = requiredFields.map { requiredField ->
+            val field =
+                fields.find { it.first == requiredField.first } ?: error("Could not find ${requiredField.first}")
+            requiredField.second.invoke(field.second)
+        }
+        if (!results.contains(false)) validPassports++
+    }
+    println(validPassports)
+}
+
+fun day4() {
+    val input = File("4.txt").readText().split("\n\n")
+    val requiredFields = listOf("byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid")
+    var validPassports = 0
+    val regex = Regex("[ \r\n]")
+    input.forEach { passport ->
+        val fields = passport.split(regex).map { it.split(":")[0] }
+        if (fields.containsAll(requiredFields)) validPassports++
+    }
+    println(validPassports)
+}
+
+
+fun day3() {
+    val lines = readFile("3.txt")
+    val map = lines.map { line ->
+        line.map {
+            it
+        }
+    }
+    val directions = listOf(Pair(1, 1), Pair(3, 1), Pair(5, 1), Pair(7, 1), Pair(1, 2))
+    val result = directions
+        .map { getTreesForSlope(map, lines[0].length, lines.size, it.first, it.second) }
+        .reduce { acc, i -> acc * i }
+    println(result)
+}
+
+private fun getTreesForSlope(
+    map: List<List<Char>>,
+    mapWidth: Int,
+    mapHeight: Int,
+    deltaX: Int,
+    deltaY: Int
+): Int {
+    var cursorX = 0
+    var cursorY = 0
+    var treeCount = 0
+    while (cursorY < mapHeight) {
+        cursorX = (cursorX + deltaX) % mapWidth
+        cursorY += deltaY
+        if (map.getOrNull(cursorY)?.getOrNull(cursorX) == '#') {
+            treeCount++
+        }
+    }
+    return treeCount
 }
 
 fun day2part2() {
