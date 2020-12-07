@@ -28,27 +28,30 @@ fun day7() {
             Rule(color, contents)
         }
     }.map { it.color to it }.toMap()
-    val goldMap = HashMap<String, Int>()
+    val goldMap = HashMap<String, Boolean>()
     rules.values.forEach { rule ->
-        calculateRule(rules, rule, goldMap)
+        goldMap[rule.color] = calculateRule(rules, rule, goldMap)
     }
-    println(goldMap.values.sum())
+    println(goldMap.values.filter { it }.size - 1) // Remove the gold bag itself
 }
 
-private fun calculateRule(rules: Map<String, Rule>, rule: Rule, goldMap: HashMap<String, Int>): Int {
-    when {
-        rule.color == "shiny gold" -> return 1
+private fun calculateRule(rules: Map<String, Rule>, rule: Rule, goldMap: HashMap<String, Boolean>): Boolean {
+    return when {
+        rule.color == "shiny gold" -> {
+            true
+        }
         rule.contents.isEmpty() -> {
-            goldMap[rule.color] = 0
-            return 0
+            false
         }
         else -> {
-            val goldCount = rule.contents.sumBy { innerRule ->
+            val goldCount = rule.contents.map { innerRule ->
                 goldMap.getOrPut(innerRule.first) {
-                    innerRule.second * calculateRule(rules, rules.getValue(innerRule.first), goldMap)
+                    calculateRule(rules, rules.getValue(innerRule.first), goldMap).apply {
+                        goldMap[innerRule.first] = this
+                    }
                 }
             }
-            goldMap[rule.color] = goldCount
+            goldCount.any { it }
         }
     }
 }
