@@ -1,13 +1,59 @@
 import java.io.File
+import java.util.regex.Pattern
 import kotlin.math.ceil
+import kotlin.streams.toList
 
 fun main(args: Array<String>) {
-    day6part2()
+    day7()
 }
 
 fun day7() {
-
+    val input = readFile("7.txt")
+    val rules = input.map { rule ->
+        val color = rule.split(" ").take(2).reduce { acc, s -> "$acc $s" }
+        if (rule.contains("no other bags")) {
+            Rule(color, listOf())
+        } else {
+            val contents = Pattern
+                .compile("[\\d] [\\w]* [\\w]* bag[s]?")
+                .matcher(rule)
+                .results().map {
+                    it.group()
+                }.toList().map {
+                    val splitRule = it.split(" ")
+                    val contentColor = splitRule[1] + " " + splitRule[2]
+                    val count = splitRule[0].toInt()
+                    contentColor to count
+                }
+            Rule(color, contents)
+        }
+    }.map { it.color to it }.toMap()
+    val goldMap = HashMap<String, Int>()
+    rules.values.forEach { rule ->
+        calculateRule(rules, rule, goldMap)
+    }
+    println(goldMap.values.sum())
 }
+
+private fun calculateRule(rules: Map<String, Rule>, rule: Rule, goldMap: HashMap<String, Int>): Int {
+    when {
+        rule.color == "shiny gold" -> return 1
+        rule.contents.isEmpty() -> {
+            goldMap[rule.color] = 0
+            return 0
+        }
+        else -> {
+            val goldCount = rule.contents.sumBy { innerRule ->
+                goldMap.getOrPut(innerRule.first) {
+                    innerRule.second * calculateRule(rules, rules.getValue(innerRule.first), goldMap)
+                }
+            }
+            goldMap[rule.color] = goldCount
+        }
+    }
+}
+
+data class Rule(val color: String, val contents: List<Pair<String, Int>>)
 
 fun day6part2() {
     val groups = File("6.txt").readText().split("\n\n")
